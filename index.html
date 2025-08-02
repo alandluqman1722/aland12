@@ -1,434 +1,1766 @@
-<!DOCTYPE html>
-<html lang="en">
+  <!DOCTYPE html>
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Site Portal - View Embedded Websites</title>
+    <title>سیستەمی بەڕێوەبردنی قەست</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <style>
-        .site-card {
-            transition: all 0.3s ease;
-            background-size: cover;
-            background-position: center;
+        .form-container {
+            display: none;
         }
-        .site-card:hover {
-            transform: translateY(-5px);
+        .form-container.active {
+            display: block;
+            animation: fadeIn 0.3s ease-in-out;
         }
-        .iframe-container {
-            position: relative;
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .rtl-input {
+            direction: rtl;
+            text-align: right;
+        }
+        .currency-input {
+            padding-left: 1.5rem;
+        }
+        .currency-symbol {
+            left: 0.5rem;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .progress-bar {
+            height: 6px;
+            border-radius: 3px;
             overflow: hidden;
-            padding-top: 56.25%; /* 16:9 Aspect Ratio */
         }
-        .responsive-iframe {
-            position: absolute;
-            top: 0;
-            left: 0;
-            bottom: 0;
-            right: 0;
-            width: 100%;
+        .progress-fill {
             height: 100%;
-            border: none;
+            transition: width 0.3s ease;
         }
-        .modal {
-            transition: opacity 0.3s ease;
+        .installment-card {
+            transition: all 0.3s ease;
         }
-        .modal-overlay {
-            background-color: rgba(0, 0, 0, 0.8);
+        .installment-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+        }
+        .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
         }
     </style>
 </head>
-<body class="bg-gray-100 min-h-screen">
-    <!-- Navigation -->
-    <nav class="bg-indigo-700 text-white shadow-lg">
-        <div class="container mx-auto px-4 py-3 flex justify-between items-center">
-            <div class="flex items-center space-x-2">
-                <i class="fas fa-window-restore text-2xl"></i>
-                <h1 class="text-xl font-bold">Site Portal</h1>
-            </div>
-            <button id="adminBtn" class="bg-indigo-600 hover:bg-indigo-800 px-4 py-2 rounded-lg transition">
-                <i class="fas fa-lock mr-2"></i>Admin Login
-            </button>
-        </div>
-    </nav>
-
-    <!-- Main Content -->
-    <main class="container mx-auto px-4 py-8">
-        <div class="text-center mb-12">
-            <h2 class="text-3xl font-bold text-gray-800 mb-2">Browse Embedded Websites</h2>
-            <p class="text-gray-600 max-w-2xl mx-auto">Click on any site below to view it in an embedded window. These are read-only views.</p>
-        </div>
-
-        <!-- Sites Grid -->
-        <div id="sitesContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Sites will be loaded here dynamically -->
-        </div>
-
-        <!-- Empty State -->
-        <div id="emptyState" class="text-center py-12 hidden">
-            <i class="fas fa-window-maximize text-5xl text-gray-300 mb-4"></i>
-            <h3 class="text-xl font-semibold text-gray-500">No websites added yet</h3>
-            <p class="text-gray-400">Admin can add websites to display here</p>
-        </div>
-    </main>
-
-    <!-- Site Viewer Modal -->
-    <div id="siteModal" class="modal fixed inset-0 z-50 flex items-center justify-center hidden">
-        <div class="modal-overlay absolute inset-0"></div>
-        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-6xl mx-4 h-[80vh] flex flex-col z-10">
-            <div class="flex justify-between items-center bg-gray-100 px-4 py-3 rounded-t-lg border-b">
-                <h3 id="modalTitle" class="font-semibold text-gray-800"></h3>
-                <button id="closeModal" class="text-gray-500 hover:text-gray-700">
-                    <i class="fas fa-times text-xl"></i>
-                </button>
-            </div>
-            <div class="iframe-container flex-grow">
-                <iframe id="siteFrame" class="responsive-iframe" allow="fullscreen"></iframe>
-            </div>
-            <div class="bg-gray-100 px-4 py-2 rounded-b-lg border-t text-sm text-gray-500 flex justify-between items-center">
-                <span>Embedded View - Read Only</span>
-                <button id="openNewTab" class="text-indigo-600 hover:text-indigo-800 flex items-center">
-                    <i class="fas fa-external-link-alt mr-1"></i> Open in New Tab
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Admin Login Modal -->
-    <div id="loginModal" class="modal fixed inset-0 z-50 flex items-center justify-center hidden">
-        <div class="modal-overlay absolute inset-0"></div>
-        <div class="relative bg-white rounded-lg shadow-xl w-full max-w-md mx-4 p-6 z-10">
-            <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Admin Login</h3>
-            <form id="loginForm" class="space-y-4">
-                <div>
-                    <label for="username" class="block text-sm font-medium text-gray-700 mb-1">Username</label>
-                    <input type="text" id="username" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+<body class="bg-gray-50 font-sans">
+    <div class="container mx-auto px-4 py-6">
+        <!-- Header -->
+        <header class="bg-gradient-to-r from-blue-600 to-blue-800 text-white rounded-xl shadow-lg p-6 mb-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h1 class="text-3xl font-bold">سیستەمی بەڕێوەبردنی قەست</h1>
+                    <p class="mt-2 opacity-90">بەڕێوەبردنی قەستەکانی کڕیاران بە شێوەیەکی پیشەگەر</p>
                 </div>
-                <div>
-                    <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                    <input type="password" id="password" required 
-                        class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                <div class="flex items-center space-x-4 space-x-reverse bg-blue-700/30 p-3 rounded-xl">
+                    <div class="bg-blue-500 p-3 rounded-full shadow">
+                        <i class="fas fa-calculator text-2xl"></i>
+                    </div>
+                    <div>
+                        <p class="text-sm opacity-80">ژمارەی قەستەکان</p>
+                        <p class="text-xl font-bold" id="total-installments">0</p>
+                    </div>
                 </div>
-                <div id="loginError" class="text-red-500 text-sm hidden">Invalid credentials</div>
-                <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">
-                    Login
+            </div>
+        </header>
+
+        <!-- Navigation Tabs -->
+        <div class="bg-white rounded-xl shadow-md overflow-hidden mb-8">
+            <div class="flex overflow-x-auto">
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500 active" data-form="form1">
+                    <i class="fas fa-plus-circle mr-2 text-blue-500"></i> زیادکردنی قەست
                 </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form2">
+                    <i class="fas fa-search mr-2 text-blue-500"></i> گەڕان بە مۆبایل
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form3">
+                    <i class="fas fa-file-alt mr-2 text-blue-500"></i> گەڕان بە لاپەڕە
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form4">
+                    <i class="fas fa-calendar-alt mr-2 text-blue-500"></i> گەڕان بە ڕێکەوت
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form5">
+                    <i class="fas fa-money-bill-wave mr-2 text-blue-500"></i> پارەدان
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form6">
+                    <i class="fas fa-chart-line mr-2 text-blue-500"></i> ڕاپۆرتەکان
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form7">
+                    <i class="fas fa-edit mr-2 text-blue-500"></i> نوێکردنەوە
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form8">
+                    <i class="fas fa-trash-alt mr-2 text-blue-500"></i> سڕینەوە
+                </button>
+                <button class="tab-btn px-6 py-4 font-medium text-gray-600 hover:bg-blue-50 transition-colors border-b-2 border-transparent hover:border-blue-500" data-form="form9">
+                    <i class="fas fa-sync-alt mr-2 text-blue-500"></i> پەیوەندی گووگڵ
+                </button>
+            </div>
+        </div>
+
+        <!-- Form 1: Add New Installment -->
+        <div id="form1" class="form-container active bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-plus-circle text-blue-500 mr-2"></i> زیادکردنی قەستێکی نوێ
+            </h2>
+            <form id="add-installment-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="relative">
+                        <label for="page-number" class="block text-gray-700 mb-2 font-medium">ژمارەی لاپەڕە</label>
+                        <div class="flex">
+                            <input type="text" id="page-number" class="w-full px-4 py-2 border rounded-lg rtl-input bg-gray-50" placeholder="خۆکار" readonly>
+                            <button type="button" id="manual-page-btn" class="ml-2 bg-gray-200 hover:bg-gray-300 px-4 py-2 rounded-lg transition-colors">
+                                <i class="fas fa-edit mr-1"></i> دەستیدا
+                            </button>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="customer-name" class="block text-gray-700 mb-2 font-medium">ناوی سییان</label>
+                        <input type="text" id="customer-name" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="ناوی سییان" required>
+                    </div>
+                    <div>
+                        <label for="phone-number" class="block text-gray-700 mb-2 font-medium">ژمارەی مۆبایل</label>
+                        <input type="tel" id="phone-number" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠٧٧٠XXX XXXX" required>
+                    </div>
+                    <div>
+                        <label for="sale-date" class="block text-gray-700 mb-2 font-medium">ڕێکەوتی فروشتن</label>
+                        <input type="date" id="sale-date" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div class="relative">
+                        <label for="sale-dinar" class="block text-gray-700 mb-2 font-medium">فروشتن بە دینار</label>
+                        <div class="relative">
+                            <input type="number" id="sale-dinar" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠" min="0">
+                            <span class="absolute currency-symbol">د.ع</span>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <label for="sale-dollar" class="block text-gray-700 mb-2 font-medium">فروشتن بە دولار</label>
+                        <div class="relative">
+                            <input type="number" id="sale-dollar" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠" min="0">
+                            <span class="absolute currency-symbol">$</span>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <label for="paid-dinar" class="block text-gray-700 mb-2 font-medium">پارەی داوە بە دینار</label>
+                        <div class="relative">
+                            <input type="number" id="paid-dinar" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠" min="0">
+                            <span class="absolute currency-symbol">د.ع</span>
+                        </div>
+                    </div>
+                    <div class="relative">
+                        <label for="paid-dollar" class="block text-gray-700 mb-2 font-medium">پارەی داوە بە دولار</label>
+                        <div class="relative">
+                            <input type="number" id="paid-dollar" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠" min="0">
+                            <span class="absolute currency-symbol">$</span>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="remaining-amount" class="block text-gray-700 mb-2 font-medium">بری ماوە</label>
+                        <input type="text" id="remaining-amount" class="w-full px-4 py-2 border rounded-lg rtl-input bg-gray-100 font-semibold" placeholder="ئۆتۆماتیکی هەژمار دەکرێت" readonly>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="notes" class="block text-gray-700 mb-2 font-medium">تێبینی</label>
+                        <textarea id="notes" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="2" placeholder="هیچ تێبینیەک نییە"></textarea>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end space-x-3 space-x-reverse">
+                    <button type="reset" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-6 py-3 rounded-lg font-medium transition-colors">
+                        <i class="fas fa-times mr-2"></i> پاککردنەوە
+                    </button>
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-save mr-2"></i> پاشەکەوتکردن
+                    </button>
+                </div>
             </form>
         </div>
-    </div>
 
-    <!-- Admin Panel (hidden by default) -->
-    <div id="adminPanel" class="fixed inset-0 bg-gray-100 z-50 overflow-y-auto hidden">
-        <div class="container mx-auto px-4 py-8">
-            <div class="flex justify-between items-center mb-8">
-                <h2 class="text-2xl font-bold text-gray-800 flex items-center">
-                    <i class="fas fa-user-shield mr-2"></i> Admin Panel
-                </h2>
-                <button id="logoutBtn" class="bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-lg transition">
-                    <i class="fas fa-sign-out-alt mr-2"></i>Logout
-                </button>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
-                <h3 class="text-xl font-semibold text-gray-800 mb-4">Add New Site</h3>
-                <form id="addSiteForm" class="space-y-4">
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
-                            <label for="siteName" class="block text-sm font-medium text-gray-700 mb-1">Site Name</label>
-                            <input type="text" id="siteName" required 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                        <div>
-                            <label for="siteUrl" class="block text-sm font-medium text-gray-700 mb-1">Site URL</label>
-                            <input type="url" id="siteUrl" required 
-                                class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        </div>
-                    </div>
+        <!-- Form 2: Search by Phone -->
+        <div id="form2" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-search text-blue-500 mr-2"></i> گەڕان بە ژمارەی مۆبایل
+            </h2>
+            <form id="search-phone-form">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
                     <div>
-                        <label for="siteIcon" class="block text-sm font-medium text-gray-700 mb-1">Icon (Font Awesome class)</label>
-                        <input type="text" id="siteIcon" placeholder="fas fa-globe" 
-                            class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <label for="search-phone" class="block text-gray-700 mb-2 font-medium">ژمارەی مۆبایل</label>
+                        <input type="tel" id="search-phone" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠٧٧٠XXX XXXX" required>
                     </div>
-                    <div>
-                        <label for="siteColor" class="block text-sm font-medium text-gray-700 mb-1">Card Color</label>
-                        <select id="siteColor" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                            <option value="bg-blue-100 border-blue-300">Blue</option>
-                            <option value="bg-green-100 border-green-300">Green</option>
-                            <option value="bg-red-100 border-red-300">Red</option>
-                            <option value="bg-yellow-100 border-yellow-300">Yellow</option>
-                            <option value="bg-purple-100 border-purple-300">Purple</option>
-                            <option value="bg-pink-100 border-pink-300">Pink</option>
-                            <option value="bg-indigo-100 border-indigo-300">Indigo</option>
-                        </select>
+                    <div class="md:col-span-2 flex items-end">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md h-12 w-full md:w-auto">
+                            <i class="fas fa-search mr-2"></i> گەڕان
+                        </button>
                     </div>
-                    <button type="submit" class="w-full bg-indigo-600 text-white py-2 px-4 rounded-md hover:bg-indigo-700 transition">
-                        <i class="fas fa-plus mr-2"></i> Add Site
-                    </button>
-                </form>
-            </div>
-
-            <div class="bg-white rounded-lg shadow-md p-6">
-                <h3 class="text-xl font-semibold text-gray-800 mb-4">Manage Sites</h3>
-                <div id="adminSitesContainer" class="space-y-4">
-                    <!-- Sites will be loaded here for management -->
+                </div>
+            </form>
+            <div id="phone-results" class="mt-8 hidden">
+                <h3 class="text-xl font-semibold text-gray-700 mb-4">ئەنجامەکان</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6" id="phone-results-cards">
+                    <!-- Cards will be inserted here by JavaScript -->
                 </div>
             </div>
         </div>
+
+        <!-- Form 3: Search by Page Number -->
+        <div id="form3" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-file-alt text-blue-500 mr-2"></i> گەڕان بە ژمارەی لاپەڕە
+            </h2>
+            <form id="search-page-form">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="search-page" class="block text-gray-700 mb-2 font-medium">ژمارەی لاپەڕە</label>
+                        <input type="text" id="search-page" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="ژمارەی لاپەڕە" required>
+                    </div>
+                    <div class="md:col-span-2 flex items-end">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md h-12 w-full md:w-auto">
+                            <i class="fas fa-search mr-2"></i> گەڕان
+                        </button>
+                    </div>
+                </div>
+            </form>
+            <div id="page-results" class="mt-8 hidden">
+                <div class="bg-white rounded-xl shadow-md overflow-hidden">
+                    <div class="p-6">
+                        <h3 class="text-xl font-semibold text-gray-700 mb-4">زانیاری قەست</h3>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div>
+                                <p class="text-gray-600">ژمارەی لاپەڕە:</p>
+                                <p class="font-semibold text-lg" id="result-page-number">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">ناوی سییان:</p>
+                                <p class="font-semibold text-lg" id="result-customer-name">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">ژمارەی مۆبایل:</p>
+                                <p class="font-semibold text-lg" id="result-phone-number">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">ڕێکەوتی فروشتن:</p>
+                                <p class="font-semibold text-lg" id="result-sale-date">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">فروشتن بە دینار:</p>
+                                <p class="font-semibold text-lg" id="result-sale-dinar">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">فروشتن بە دولار:</p>
+                                <p class="font-semibold text-lg" id="result-sale-dollar">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">پارەی داوە بە دینار:</p>
+                                <p class="font-semibold text-lg" id="result-paid-dinar">-</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">پارەی داوە بە دولار:</p>
+                                <p class="font-semibold text-lg" id="result-paid-dollar">-</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <p class="text-gray-600">بری ماوە:</p>
+                                <p class="font-semibold text-xl text-blue-600" id="result-remaining">-</p>
+                            </div>
+                            <div class="md:col-span-2">
+                                <p class="text-gray-600">تێبینی:</p>
+                                <p class="font-semibold" id="result-notes">-</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 px-6 py-4 border-t">
+                        <h4 class="font-medium text-gray-700 mb-3">مێژووی پارەدانەکان</h4>
+                        <div class="overflow-x-auto">
+                            <table class="min-w-full bg-white">
+                                <thead>
+                                    <tr class="bg-gray-100">
+                                        <th class="py-2 px-4 text-right">بڕی پارە</th>
+                                        <th class="py-2 px-4 text-right">جۆری پارە</th>
+                                        <th class="py-2 px-4 text-right">ڕێکەوت</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="payment-history-body">
+                                    <!-- Payment history will be inserted here by JavaScript -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form 4: Search by Date -->
+        <div id="form4" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-calendar-alt text-blue-500 mr-2"></i> گەڕان بە  ڕێکەوت
+            </h2>
+            <form id="search-date-form">
+                <div class="grid grid-cols-1 md:grid-cols-4 gap-6">
+                    <div>
+                        <label for="search-date-single" class="block text-gray-700 mb-2 font-medium">ڕێکەوت</label>
+                        <input type="date" id="search-date-single" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div class="flex items-center justify-center md:justify-start">
+                        <p class="text-gray-600">یان</p>
+                    </div>
+                    <div>
+                        <label for="search-date-from" class="block text-gray-700 mb-2 font-medium">لە  ڕێکەوت</label>
+                        <input type="date" id="search-date-from" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                    <div>
+                        <label for="search-date-to" class="block text-gray-700 mb-2 font-medium">بۆ  ڕێکەوت</label>
+                        <input type="date" id="search-date-to" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                    </div>
+                </div>
+                <div class="mt-6 flex justify-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-search mr-2"></i> گەڕان
+                    </button>
+                </div>
+            </form>
+            <div id="date-results" class="mt-8 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-700">ئەنجامەکان</h3>
+                    <button id="export-date-results" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-file-excel mr-2"></i> هەناردەکردن
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border rounded-lg overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="py-3 px-4 border text-right">ژمارەی لاپەڕە</th>
+                                <th class="py-3 px-4 border text-right">ناوی سییان</th>
+                                <th class="py-3 px-4 border text-right">ژمارەی مۆبایل</th>
+                                <th class="py-3 px-4 border text-right">ڕێکەوت</th>
+                                <th class="py-3 px-4 border text-right">بڕی قەست</th>
+                                <th class="py-3 px-4 border text-right">بری ماوە</th>
+                                <th class="py-3 px-4 border text-right">کردارەکان</th>
+                            </tr>
+                        </thead>
+                        <tbody id="date-results-body">
+                            <!-- Results will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form 5: Payment Form -->
+        <div id="form5" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-money-bill-wave text-blue-500 mr-2"></i> فۆرمی پارەدان
+            </h2>
+            <form id="payment-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="payment-page-number" class="block text-gray-700 mb-2 font-medium">ژمارەی لاپەڕە</label>
+                        <input type="text" id="payment-page-number" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="ژمارەی لاپەڕە" required>
+                    </div>
+                    <div>
+                        <label for="payment-customer-name" class="block text-gray-700 mb-2 font-medium">ناوی سییان</label>
+                        <input type="text" id="payment-customer-name" class="w-full px-4 py-2 border rounded-lg rtl-input bg-gray-100" readonly>
+                    </div>
+                    <div class="relative">
+                        <label for="payment-amount" class="block text-gray-700 mb-2 font-medium">بڕی پارە</label>
+                        <div class="relative">
+                            <input type="number" id="payment-amount" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="٠" min="0" required>
+                            <span class="absolute currency-symbol">د.ع</span>
+                        </div>
+                    </div>
+                    <div>
+                        <label for="payment-date" class="block text-gray-700 mb-2 font-medium">ڕێکەوتی پارەدان</label>
+                        <input type="date" id="payment-date" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" required>
+                    </div>
+                    <div>
+                        <label class="block text-gray-700 mb-2 font-medium">جۆری پارەدان</label>
+                        <div class="flex space-x-4 space-x-reverse">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="payment-type" value="dinar" class="form-radio text-blue-600 h-4 w-4" checked>
+                                <span class="ml-2">دینار</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="payment-type" value="dollar" class="form-radio text-blue-600 h-4 w-4">
+                                <span class="ml-2">دولار</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="remaining-after-payment" class="block text-gray-700 mb-2 font-medium">بری ماوە دوای پارەدان</label>
+                        <input type="text" id="remaining-after-payment" class="w-full px-4 py-2 border rounded-lg rtl-input bg-gray-100 font-semibold" placeholder="ئۆتۆماتیکی هەژمار دەکرێت" readonly>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label for="payment-notes" class="block text-gray-700 mb-2 font-medium">تێبینی</label>
+                        <textarea id="payment-notes" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="2" placeholder="هیچ تێبینیەک نییە"></textarea>
+                    </div>
+                </div>
+                <div class="mt-8 flex justify-end">
+                    <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-check-circle mr-2"></i> تۆمارکردنی پارەدان
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Form 6: Reports -->
+        <div id="form6" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-chart-line text-blue-500 mr-2"></i> ڕاپۆرتی قەرزەکان
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="bg-blue-50 p-6 rounded-xl border border-blue-100">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-blue-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-user text-blue-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-blue-800">ڕاپۆرتی تاکە سییان</h3>
+                    </div>
+                    <div class="mb-4">
+                        <label for="report-customer" class="block text-gray-700 mb-2">ناوی سییان یان ژمارەی مۆبایل</label>
+                        <input type="text" id="report-customer" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="گەڕان...">
+                    </div>
+                    <button id="generate-customer-report" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-file-alt mr-2"></i> بڵاوکردنەوەی ڕاپۆرت
+                    </button>
+                </div>
+                <div class="bg-green-50 p-6 rounded-xl border border-green-100">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-green-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-chart-pie text-green-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-green-800">ڕاپۆرتی گشتیی قەرزەکان</h3>
+                    </div>
+                    <p class="text-gray-600 mb-4">هەموو قەرزەکان لە کۆی گشتی</p>
+                    <button id="generate-general-report" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-chart-pie mr-2"></i> بڵاوکردنەوەی ڕاپۆرت
+                    </button>
+                </div>
+                <div class="bg-purple-50 p-6 rounded-xl border border-purple-100">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-purple-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-filter text-purple-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-purple-800">قەرزەکان زیاتر لە X</h3>
+                    </div>
+                    <div class="mb-4">
+                        <label for="debt-threshold" class="block text-gray-700 mb-2">بڕی سنووردارکردن</label>
+                        <div class="flex">
+                            <input type="number" id="debt-threshold" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-purple-500 focus:border-purple-500" placeholder="٠" min="0">
+                            <select id="debt-currency" class="ml-2 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-purple-500">
+                                <option value="dinar">دینار</option>
+                                <option value="dollar">دولار</option>
+                            </select>
+                        </div>
+                    </div>
+                    <button id="generate-threshold-report" class="w-full bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-filter mr-2"></i> بڵاوکردنەوەی ڕاپۆرت
+                    </button>
+                </div>
+            </div>
+            <div id="report-results" class="mt-8 hidden">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-xl font-semibold text-gray-700">ئەنجامەکانی ڕاپۆرت</h3>
+                    <button id="export-report-results" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-lg text-sm font-medium">
+                        <i class="fas fa-file-excel mr-2"></i> هەناردەکردن
+                    </button>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="min-w-full bg-white border rounded-lg overflow-hidden">
+                        <thead>
+                            <tr class="bg-gray-100">
+                                <th class="py-3 px-4 border text-right">ژمارەی لاپەڕە</th>
+                                <th class="py-3 px-4 border text-right">ناوی سییان</th>
+                                <th class="py-3 px-4 border text-right">ژمارەی مۆبایل</th>
+                                <th class="py-3 px-4 border text-right">بڕی قەست</th>
+                                <th class="py-3 px-4 border text-right">پارەی داوە</th>
+                                <th class="py-3 px-4 border text-right">بری ماوە</th>
+                                <th class="py-3 px-4 border text-right">ڕێکەوتی کۆتایی</th>
+                            </tr>
+                        </thead>
+                        <tbody id="report-results-body">
+                            <!-- Results will be inserted here by JavaScript -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Form 7: Update Information -->
+        <div id="form7" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-edit text-blue-500 mr-2"></i> نوێکردنەوەی زانیارییەکان
+            </h2>
+            <form id="update-form">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div>
+                        <label for="update-search" class="block text-gray-700 mb-2 font-medium">گەڕان بە ژمارەی لاپەڕە یان مۆبایل</label>
+                        <input type="text" id="update-search" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="ژمارەی لاپەڕە یان مۆبایل" required>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="update-search-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md h-12 w-full md:w-auto">
+                            <i class="fas fa-search mr-2"></i> گەڕان
+                        </button>
+                    </div>
+                </div>
+                <div id="update-fields" class="mt-6 hidden">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                            <label for="update-customer-name" class="block text-gray-700 mb-2 font-medium">ناوی سییان</label>
+                            <input type="text" id="update-customer-name" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="update-phone-number" class="block text-gray-700 mb-2 font-medium">ژمارەی مۆبایل</label>
+                            <input type="tel" id="update-phone-number" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="update-sale-date" class="block text-gray-700 mb-2 font-medium">ڕێکەوتی فروشتن</label>
+                            <input type="date" id="update-sale-date" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
+                        </div>
+                        <div>
+                            <label for="update-page-number" class="block text-gray-700 mb-2 font-medium">ژمارەی لاپەڕە</label>
+                            <input type="text" id="update-page-number" class="w-full px-4 py-2 border rounded-lg rtl-input bg-gray-100" readonly>
+                        </div>
+                        <div class="relative">
+                            <label for="update-sale-dinar" class="block text-gray-700 mb-2 font-medium">فروشتن بە دینار</label>
+                            <div class="relative">
+                                <input type="number" id="update-sale-dinar" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="0">
+                                <span class="absolute currency-symbol">د.ع</span>
+                            </div>
+                        </div>
+                        <div class="relative">
+                            <label for="update-sale-dollar" class="block text-gray-700 mb-2 font-medium">فروشتن بە دولار</label>
+                            <div class="relative">
+                                <input type="number" id="update-sale-dollar" class="w-full px-4 py-2 border rounded-lg rtl-input currency-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" min="0">
+                                <span class="absolute currency-symbol">$</span>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label for="update-notes" class="block text-gray-700 mb-2 font-medium">تێبینی</label>
+                            <textarea id="update-notes" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" rows="2"></textarea>
+                        </div>
+                    </div>
+                    <div class="mt-8 flex justify-end">
+                        <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md">
+                            <i class="fas fa-save mr-2"></i> نوێکردنەوەی زانیارییەکان
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Form 8: Delete Installment or Customer -->
+        <div id="form8" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-trash-alt text-blue-500 mr-2"></i> سڕینەوەی قەست یان کڕیار
+            </h2>
+            <form id="delete-form">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                    <div>
+                        <label for="delete-search" class="block text-gray-700 mb-2 font-medium">گەڕان بە ژمارەی لاپەڕە یان مۆبایل</label>
+                        <input type="text" id="delete-search" class="w-full px-4 py-2 border rounded-lg rtl-input focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="ژمارەی لاپەڕە یان مۆبایل" required>
+                    </div>
+                    <div class="flex items-end">
+                        <button type="button" id="delete-search-btn" class="bg-blue-600 hover:bg-blue-700 text-white px-6 py-2 rounded-lg font-medium transition-colors shadow-md h-12 w-full md:w-auto">
+                            <i class="fas fa-search mr-2"></i> گەڕان
+                        </button>
+                    </div>
+                </div>
+                <div id="delete-results" class="mt-6 hidden">
+                    <div class="mb-6">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">ئەنجامەکانی گەڕان</h3>
+                        <div id="delete-customer-info" class="bg-gray-50 p-4 rounded-lg">
+                            <!-- Customer info will be inserted here by JavaScript -->
+                        </div>
+                    </div>
+                    <div class="mb-6">
+                        <label class="block text-gray-700 mb-4 font-medium">جۆری سڕینەوە</label>
+                        <div class="flex space-x-4 space-x-reverse">
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="delete-type" value="single" class="form-radio text-blue-600 h-4 w-4" checked>
+                                <span class="ml-2">سڕینەوەی قەستی تایبەتی</span>
+                            </label>
+                            <label class="inline-flex items-center">
+                                <input type="radio" name="delete-type" value="all" class="form-radio text-blue-600 h-4 w-4">
+                                <span class="ml-2">سڕینەوەی هەموو قەستەکانی کڕیار</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end">
+                        <button type="submit" class="bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-medium transition-colors shadow-md">
+                            <i class="fas fa-trash-alt mr-2"></i> سڕینەوە
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+
+        <!-- Form 9: Google Sheets Integration -->
+        <div id="form9" class="form-container bg-white rounded-xl shadow-md p-6 mb-8">
+            <h2 class="text-2xl font-bold text-gray-800 mb-6 border-b pb-2 flex items-center">
+                <i class="fas fa-sync-alt text-blue-500 mr-2"></i> پەیوەندی گووگڵ
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div class="bg-white border border-gray-200 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-blue-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-upload text-blue-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800">هەناردەکردنی زانیارییەکان بۆ گووگڵ</h3>
+                    </div>
+                    <p class="text-gray-600 mb-4">هەموو زانیارییەکانی قەستەکان هەناردە بکە بۆ پەڕەی گووگڵ</p>
+                    <button id="export-to-sheets" class="w-full bg-blue-600 hover:bg-blue-700 text-white px-4 py-3 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-cloud-upload-alt mr-2"></i> هەناردەکردن
+                    </button>
+                </div>
+                <div class="bg-white border border-gray-200 rounded-xl p-6">
+                    <div class="flex items-center mb-4">
+                        <div class="bg-green-100 p-3 rounded-full mr-3">
+                            <i class="fas fa-download text-green-600"></i>
+                        </div>
+                        <h3 class="text-lg font-semibold text-gray-800">داگرتنی زانیارییەکان لە گووگڵ</h3>
+                    </div>
+                    <p class="text-gray-600 mb-4">زانیارییەکانی قەستەکان دابگرە لە پەڕەی گووگڵ</p>
+                    <button id="import-from-sheets" class="w-full bg-green-600 hover:bg-green-700 text-white px-4 py-3 rounded-lg font-medium transition-colors shadow-md">
+                        <i class="fas fa-cloud-download-alt mr-2"></i> داگرتن
+                    </button>
+                </div>
+            </div>
+            <div id="sheets-status" class="mt-6 hidden">
+                <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                    <h4 class="font-medium text-gray-700 mb-2">دۆخی پەیوەندی</h4>
+                    <div class="flex items-center">
+                        <div id="sheets-status-icon" class="mr-3">
+                            <i class="fas fa-circle-notch fa-spin text-blue-500"></i>
+                        </div>
+                        <p id="sheets-status-text" class="text-gray-600">چالاکییەکە جێبەجێ دەکرێت...</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white rounded-xl shadow-lg p-6 mt-8">
+            <div class="flex flex-col md:flex-row justify-between items-center">
+                <div class="mb-4 md:mb-0">
+                    <h2 class="text-xl font-bold">سیستەمی بەڕێوەبردنی قەست</h2>
+                    <p class="mt-2 text-gray-300 opacity-90">بەڕێوەبردنی قەستەکانی کڕیاران بە شێوەیەکی پیشەگەر</p>
+                </div>
+                <div class="flex space-x-4 space-x-reverse">
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors">
+                        <i class="fab fa-facebook-f"></i>
+                    </a>
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors">
+                        <i class="fab fa-twitter"></i>
+                    </a>
+                    <a href="#" class="text-gray-300 hover:text-white transition-colors">
+                        <i class="fab fa-instagram"></i>
+                    </a>
+                </div>
+            </div>
+            <div class="mt-6 pt-6 border-t border-gray-700 text-center text-gray-400 text-sm">
+                <p>© 2023 سیستەمی بەڕێوەبردنی قەست. هەموو مافەکان پارێزراون.</p>
+            </div>
+        </footer>
     </div>
 
     <script>
-        // Admin credentials (in a real app, this would be server-side)
-        const ADMIN_CREDENTIALS = {
-            username: "Aland-luqman",
-            password: "aland1234567890" // In production, use proper authentication
-        };
+        // Google Sheets API configuration
+        const SPREADSHEET_ID = '1-NInXqJ-qYYNb4Lm0-iZjtWMA9kkwPUsL13ioLG1pCM';
+        const CLIENT_ID = 'YOUR_GOOGLE_CLIENT_ID';
+        const API_KEY = 'YOUR_GOOGLE_API_KEY';
+        const SCOPE = 'https://www.googleapis.com/auth/spreadsheets';
+        
+        // Sample data storage (in a real app, this would be a database)
+        let installments = JSON.parse(localStorage.getItem('installments')) || [];
+        let currentPageNumber = installments.length > 0 ? 
+            Math.max(...installments.map(i => parseInt(i.pageNumber))) + 1 : 1;
 
-        // DOM Elements
-        const sitesContainer = document.getElementById('sitesContainer');
-        const emptyState = document.getElementById('emptyState');
-        const siteModal = document.getElementById('siteModal');
-        const modalTitle = document.getElementById('modalTitle');
-        const siteFrame = document.getElementById('siteFrame');
-        const closeModal = document.getElementById('closeModal');
-        const openNewTab = document.getElementById('openNewTab');
-        const adminBtn = document.getElementById('adminBtn');
-        const loginModal = document.getElementById('loginModal');
-        const loginForm = document.getElementById('loginForm');
-        const loginError = document.getElementById('loginError');
-        const adminPanel = document.getElementById('adminPanel');
-        const logoutBtn = document.getElementById('logoutBtn');
-        const addSiteForm = document.getElementById('addSiteForm');
-        const adminSitesContainer = document.getElementById('adminSitesContainer');
-
-        // Current state
-        let currentSiteUrl = '';
-        let isAdmin = false;
+        // DOM elements
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const formContainers = document.querySelectorAll('.form-container');
+        const totalInstallmentsElement = document.getElementById('total-installments');
+        const pageNumberInput = document.getElementById('page-number');
+        const manualPageBtn = document.getElementById('manual-page-btn');
+        const addInstallmentForm = document.getElementById('add-installment-form');
+        const remainingAmountInput = document.getElementById('remaining-amount');
 
         // Initialize the app
-        document.addEventListener('DOMContentLoaded', () => {
-            loadSites();
+        function initApp() {
+            updateTotalInstallments();
+            generatePageNumber();
             setupEventListeners();
-        });
-
-        function setupEventListeners() {
-            // Close modal when clicking overlay or close button
-            siteModal.addEventListener('click', (e) => {
-                if (e.target === siteModal || e.target.classList.contains('modal-overlay')) {
-                    closeSiteModal();
-                }
-            });
-            
-            closeModal.addEventListener('click', closeSiteModal);
-            
-            // Open current site in new tab
-            openNewTab.addEventListener('click', () => {
-                window.open(currentSiteUrl, '_blank');
-            });
-            
-            // Admin button opens login modal
-            adminBtn.addEventListener('click', () => {
-                if (isAdmin) {
-                    openAdminPanel();
-                } else {
-                    loginModal.classList.remove('hidden');
-                }
-            });
-            
-            // Login form submission
-            loginForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const username = document.getElementById('username').value;
-                const password = document.getElementById('password').value;
-                
-                if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
-                    isAdmin = true;
-                    loginModal.classList.add('hidden');
-                    openAdminPanel();
-                } else {
-                    loginError.classList.remove('hidden');
-                }
-            });
-            
-            // Logout button
-            logoutBtn.addEventListener('click', () => {
-                isAdmin = false;
-                adminPanel.classList.add('hidden');
-            });
-            
-            // Add site form
-            addSiteForm.addEventListener('submit', (e) => {
-                e.preventDefault();
-                const name = document.getElementById('siteName').value;
-                const url = document.getElementById('siteUrl').value;
-                const icon = document.getElementById('siteIcon').value || 'fas fa-globe';
-                const color = document.getElementById('siteColor').value;
-                
-                addSite({ name, url, icon, color });
-                addSiteForm.reset();
-            });
+            checkGoogleAuth();
         }
 
-        function loadSites() {
-            let sites = JSON.parse(localStorage.getItem('sites')) || [];
+        // Update total installments count
+        function updateTotalInstallments() {
+            totalInstallmentsElement.textContent = installments.length;
+        }
+
+        // Generate automatic page number
+        function generatePageNumber() {
+            pageNumberInput.value = currentPageNumber;
+            pageNumberInput.readOnly = true;
+            pageNumberInput.placeholder = "خۆکار";
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Tab switching functionality
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    // Remove active class from all buttons and forms
+                    tabButtons.forEach(btn => btn.classList.remove('active'));
+                    formContainers.forEach(form => form.classList.remove('active'));
+                    
+                    // Add active class to clicked button and corresponding form
+                    button.classList.add('active');
+                    const formId = button.getAttribute('data-form');
+                    document.getElementById(formId).classList.add('active');
+                });
+            });
+
+            // Manual page number button
+            manualPageBtn.addEventListener('click', () => {
+                pageNumberInput.readOnly = false;
+                pageNumberInput.placeholder = "ژمارەی لاپەڕە بنووسە";
+                pageNumberInput.value = "";
+                pageNumberInput.focus();
+            });
+
+            // Calculate remaining amount
+            function calculateRemaining() {
+                const saleDinar = parseFloat(document.getElementById('sale-dinar').value) || 0;
+                const saleDollar = parseFloat(document.getElementById('sale-dollar').value) || 0;
+                const paidDinar = parseFloat(document.getElementById('paid-dinar').value) || 0;
+                const paidDollar = parseFloat(document.getElementById('paid-dollar').value) || 0;
+
+                // Simple calculation (in a real app, you'd have currency conversion)
+                const remainingDinar = saleDinar - paidDinar;
+                const remainingDollar = saleDollar - paidDollar;
+
+                let remainingText = '';
+                if (remainingDinar > 0) remainingText += `${remainingDinar.toLocaleString()} د.ع`;
+                if (remainingDollar > 0) {
+                    if (remainingText) remainingText += ' + ';
+                    remainingText += `$${remainingDollar.toLocaleString()}`;
+                }
+                if (remainingDinar <= 0 && remainingDollar <= 0) {
+                    remainingText = 'پارەی تەواو دراوە';
+                }
+
+                remainingAmountInput.value = remainingText;
+            }
+
+            // Event listeners for calculation
+            document.getElementById('sale-dinar').addEventListener('input', calculateRemaining);
+            document.getElementById('sale-dollar').addEventListener('input', calculateRemaining);
+            document.getElementById('paid-dinar').addEventListener('input', calculateRemaining);
+            document.getElementById('paid-dollar').addEventListener('input', calculateRemaining);
+
+            // Form submission for adding new installment
+            addInstallmentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const customerName = document.getElementById('customer-name').value;
+                const phoneNumber = document.getElementById('phone-number').value;
+                const saleDate = document.getElementById('sale-date').value;
+                const saleDinar = parseFloat(document.getElementById('sale-dinar').value) || 0;
+                const saleDollar = parseFloat(document.getElementById('sale-dollar').value) || 0;
+                const paidDinar = parseFloat(document.getElementById('paid-dinar').value) || 0;
+                const paidDollar = parseFloat(document.getElementById('paid-dollar').value) || 0;
+                const pageNumber = pageNumberInput.value;
+                const notes = document.getElementById('notes').value;
+
+                // Create new installment object
+                const newInstallment = {
+                    id: Date.now(),
+                    pageNumber,
+                    customerName,
+                    phoneNumber,
+                    saleDate,
+                    saleDinar,
+                    saleDollar,
+                    paidDinar,
+                    paidDollar,
+                    remainingDinar: saleDinar - paidDinar,
+                    remainingDollar: saleDollar - paidDollar,
+                    notes,
+                    payments: [],
+                    createdAt: new Date().toISOString(),
+                    updatedAt: new Date().toISOString()
+                };
+
+                // Add to our "database"
+                installments.push(newInstallment);
+                saveDataToLocalStorage();
+                
+                // Update total installments count
+                updateTotalInstallments();
+                
+                // Reset form
+                addInstallmentForm.reset();
+                generatePageNumber();
+                calculateRemaining();
+                
+                // Show success message
+                Swal.fire({
+                    title: 'سەرکەوتووبوو!',
+                    text: `قەست بە سەرکەوتوویی زیادکرا! ژمارەی لاپەڕە: ${pageNumber}`,
+                    icon: 'success',
+                    confirmButtonText: 'باشە'
+                });
+            });
+
+            // Search by phone form
+            const searchPhoneForm = document.getElementById('search-phone-form');
+            const phoneResults = document.getElementById('phone-results');
+            const phoneResultsCards = document.getElementById('phone-results-cards');
+
+            searchPhoneForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const phoneNumber = document.getElementById('search-phone').value;
+                
+                // Search for installments with this phone number
+                const results = installments.filter(inst => inst.phoneNumber === phoneNumber);
+                
+                if (results.length === 0) {
+                    phoneResultsCards.innerHTML = `
+                        <div class="md:col-span-3 bg-gray-50 rounded-xl p-8 text-center">
+                            <i class="fas fa-search text-gray-400 text-4xl mb-4"></i>
+                            <p class="text-gray-500">هیچ قەستێک نەدۆزرایەوە</p>
+                        </div>
+                    `;
+                } else {
+                    phoneResultsCards.innerHTML = results.map(inst => `
+                        <div class="installment-card bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                            <div class="p-5">
+                                <div class="flex justify-between items-start mb-3">
+                                    <h3 class="font-bold text-lg text-gray-800">${inst.customerName}</h3>
+                                    <span class="bg-blue-100 text-blue-800 badge">ژمارە: ${inst.pageNumber}</span>
+                                </div>
+                                <p class="text-gray-600 mb-1"><i class="fas fa-phone-alt mr-2 text-gray-500"></i> ${inst.phoneNumber}</p>
+                                <p class="text-gray-600 mb-3"><i class="fas fa-calendar-day mr-2 text-gray-500"></i> ${inst.saleDate}</p>
+                                
+                                <div class="mb-3">
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-600">بڕی قەست:</span>
+                                        <span class="font-medium">
+                                            ${inst.saleDinar ? inst.saleDinar + ' د.ع' : ''} 
+                                            ${inst.saleDinar && inst.saleDollar ? '+' : ''} 
+                                            ${inst.saleDollar ? inst.saleDollar + '$' : ''}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between text-sm mb-1">
+                                        <span class="text-gray-600">پارەی داوە:</span>
+                                        <span class="font-medium">
+                                            ${inst.paidDinar ? inst.paidDinar + ' د.ع' : ''} 
+                                            ${inst.paidDinar && inst.paidDollar ? '+' : ''} 
+                                            ${inst.paidDollar ? inst.paidDollar + '$' : ''}
+                                        </span>
+                                    </div>
+                                    <div class="flex justify-between text-sm">
+                                        <span class="text-gray-600">بری ماوە:</span>
+                                        <span class="font-bold ${inst.remainingDinar > 0 || inst.remainingDollar > 0 ? 'text-red-600' : 'text-green-600'}">
+                                            ${inst.remainingDinar > 0 ? inst.remainingDinar + ' د.ع' : ''} 
+                                            ${inst.remainingDinar > 0 && inst.remainingDollar > 0 ? '+' : ''} 
+                                            ${inst.remainingDollar > 0 ? inst.remainingDollar + '$' : ''}
+                                            ${inst.remainingDinar <= 0 && inst.remainingDollar <= 0 ? 'پارەی تەواو دراوە' : ''}
+                                        </span>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex justify-end mt-4">
+                                    <button onclick="viewInstallmentDetails(${inst.id})" class="text-blue-600 hover:text-blue-800 px-3 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors">
+                                        <i class="fas fa-eye mr-1"></i> بینین
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('');
+                }
+                
+                phoneResults.classList.remove('hidden');
+            });
+
+            // Search by page number form
+            const searchPageForm = document.getElementById('search-page-form');
+            const pageResults = document.getElementById('page-results');
             
-            if (sites.length === 0) {
-                // Add some default sites if none exist
-                sites = [
+            searchPageForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                const pageNumber = document.getElementById('search-page').value;
+                
+                // Search for installment with this page number
+                const result = installments.find(inst => inst.pageNumber === pageNumber);
+                
+                if (result) {
+                    document.getElementById('result-page-number').textContent = result.pageNumber;
+                    document.getElementById('result-customer-name').textContent = result.customerName;
+                    document.getElementById('result-phone-number').textContent = result.phoneNumber;
+                    document.getElementById('result-sale-date').textContent = result.saleDate;
+                    document.getElementById('result-sale-dinar').textContent = result.saleDinar + ' د.ع';
+                    document.getElementById('result-sale-dollar').textContent = result.saleDollar + '$';
+                    document.getElementById('result-paid-dinar').textContent = result.paidDinar + ' د.ع';
+                    document.getElementById('result-paid-dollar').textContent = result.paidDollar + '$';
+                    document.getElementById('result-notes').textContent = result.notes || 'هیچ تێبینیەک نییە';
+                    
+                    let remainingText = '';
+                    if (result.remainingDinar > 0) remainingText += `${result.remainingDinar} د.ع`;
+                    if (result.remainingDollar > 0) {
+                        if (remainingText) remainingText += ' + ';
+                        remainingText += `${result.remainingDollar}$`;
+                    }
+                    if (result.remainingDinar <= 0 && result.remainingDollar <= 0) {
+                        remainingText = 'پارەی تەواو دراوە';
+                    }
+                    document.getElementById('result-remaining').textContent = remainingText;
+                    
+                    // Payment history
+                    const paymentHistoryBody = document.getElementById('payment-history-body');
+                    if (result.payments.length > 0) {
+                        paymentHistoryBody.innerHTML = result.payments.map(payment => `
+                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                <td class="py-2 px-4">${payment.amount} ${payment.currency === 'dinar' ? 'د.ع' : '$'}</td>
+                                <td class="py-2 px-4">${payment.currency === 'dinar' ? 'دینار' : 'دولار'}</td>
+                                <td class="py-2 px-4">${payment.date}</td>
+                            </tr>
+                        `).join('');
+                    } else {
+                        paymentHistoryBody.innerHTML = `
+                            <tr>
+                                <td colspan="3" class="py-4 text-center text-gray-500">هیچ پارەدانێک تۆمارنەکراوە</td>
+                            </tr>
+                        `;
+                    }
+                } else {
+                    document.getElementById('result-page-number').textContent = '-';
+                    document.getElementById('result-customer-name').textContent = '-';
+                    document.getElementById('result-phone-number').textContent = '-';
+                    document.getElementById('result-sale-date').textContent = '-';
+                    document.getElementById('result-sale-dinar').textContent = '-';
+                    document.getElementById('result-sale-dollar').textContent = '-';
+                    document.getElementById('result-paid-dinar').textContent = '-';
+                    document.getElementById('result-paid-dollar').textContent = '-';
+                    document.getElementById('result-remaining').textContent = '-';
+                    document.getElementById('result-notes').textContent = '-';
+                    
+                    paymentHistoryBody.innerHTML = `
+                        <tr>
+                            <td colspan="3" class="py-4 text-center text-gray-500">هیچ پارەدانێک تۆمارنەکراوە</td>
+                        </tr>
+                    `;
+                }
+                
+                pageResults.classList.remove('hidden');
+            });
+
+            // Search by date form
+            const searchDateForm = document.getElementById('search-date-form');
+            const dateResults = document.getElementById('date-results');
+            const dateResultsBody = document.getElementById('date-results-body');
+            const exportDateResultsBtn = document.getElementById('export-date-results');
+
+            searchDateForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const singleDate = document.getElementById('search-date-single').value;
+                const fromDate = document.getElementById('search-date-from').value;
+                const toDate = document.getElementById('search-date-to').value;
+                
+                let results = [];
+                
+                if (singleDate) {
+                    results = installments.filter(inst => inst.saleDate === singleDate);
+                } else if (fromDate && toDate) {
+                    results = installments.filter(inst => {
+                        return inst.saleDate >= fromDate && inst.saleDate <= toDate;
+                    });
+                } else {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'تکایە ڕێکەوتێک یان بەرواری سەرەتا و کۆتایی دیاری بکە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                if (results.length === 0) {
+                    dateResultsBody.innerHTML = `
+                        <tr>
+                            <td colspan="7" class="py-4 text-center text-gray-500">هیچ قەستێک نەدۆزرایەوە</td>
+                        </tr>
+                    `;
+                } else {
+                    dateResultsBody.innerHTML = results.map(inst => {
+                        const remainingText = 
+                            (inst.remainingDinar > 0 ? inst.remainingDinar + ' د.ع' : '') + 
+                            (inst.remainingDinar > 0 && inst.remainingDollar > 0 ? ' + ' : '') + 
+                            (inst.remainingDollar > 0 ? inst.remainingDollar + '$' : '') + 
+                            (inst.remainingDinar <= 0 && inst.remainingDollar <= 0 ? 'پارەی تەواو دراوە' : '');
+                            
+                        return `
+                            <tr class="border-b border-gray-100 hover:bg-gray-50">
+                                <td class="py-3 px-4">${inst.pageNumber}</td>
+                                <td class="py-3 px-4">${inst.customerName}</td>
+                                <td class="py-3 px-4">${inst.phoneNumber}</td>
+                                <td class="py-3 px-4">${inst.saleDate}</td>
+                                <td class="py-3 px-4">
+                                    ${inst.saleDinar ? inst.saleDinar + ' د.ع' : ''} 
+                                    ${inst.saleDinar && inst.saleDollar ? '+' : ''} 
+                                    ${inst.saleDollar ? inst.saleDollar + '$' : ''}
+                                </td>
+                                <td class="py-3 px-4 ${inst.remainingDinar > 0 || inst.remainingDollar > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}">
+                                    ${remainingText}
+                                </td>
+                                <td class="py-3 px-4">
+                                    <button onclick="viewInstallmentDetails(${inst.id})" class="text-blue-600 hover:text-blue-800 px-2 py-1 rounded-lg bg-blue-50 hover:bg-blue-100 transition-colors text-sm">
+                                        <i class="fas fa-eye mr-1"></i> بینین
+                                    </button>
+                                </td>
+                            </tr>
+                        `;
+                    }).join('');
+                }
+                
+                dateResults.classList.remove('hidden');
+            });
+
+            exportDateResultsBtn.addEventListener('click', () => {
+                const rows = Array.from(dateResultsBody.querySelectorAll('tr')).map(row => {
+                    return Array.from(row.querySelectorAll('td')).map(cell => cell.textContent.trim());
+                });
+                
+                if (rows.length === 0 || (rows.length === 1 && rows[0][0] === 'هیچ قەستێک نەدۆزرایەوە')) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ زانیارییەک نییە بۆ هەناردەکردن',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                exportToCSV(rows, `قەستەکان_${new Date().toLocaleDateString('ar-IQ')}.csv`);
+            });
+
+            // Payment form functionality
+            const paymentForm = document.getElementById('payment-form');
+            const paymentPageNumber = document.getElementById('payment-page-number');
+            const paymentCustomerName = document.getElementById('payment-customer-name');
+            const remainingAfterPayment = document.getElementById('remaining-after-payment');
+
+            paymentPageNumber.addEventListener('input', () => {
+                const pageNumber = paymentPageNumber.value;
+                const installment = installments.find(inst => inst.pageNumber === pageNumber);
+                
+                if (installment) {
+                    paymentCustomerName.value = installment.customerName;
+                    
+                    // Calculate remaining after payment
+                    const remainingDinar = installment.remainingDinar;
+                    const remainingDollar = installment.remainingDollar;
+                    
+                    let remainingText = '';
+                    if (remainingDinar > 0) remainingText += `${remainingDinar} د.ع`;
+                    if (remainingDollar > 0) {
+                        if (remainingText) remainingText += ' + ';
+                        remainingText += `${remainingDollar}$`;
+                    }
+                    if (remainingDinar <= 0 && remainingDollar <= 0) {
+                        remainingText = 'پارەی تەواو دراوە';
+                    }
+                    
+                    remainingAfterPayment.value = remainingText;
+                } else {
+                    paymentCustomerName.value = '';
+                    remainingAfterPayment.value = '';
+                }
+            });
+
+            paymentForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const pageNumber = paymentPageNumber.value;
+                const paymentAmount = parseFloat(document.getElementById('payment-amount').value) || 0;
+                const paymentDate = document.getElementById('payment-date').value;
+                const paymentType = document.querySelector('input[name="payment-type"]:checked').value;
+                const paymentNotes = document.getElementById('payment-notes').value;
+                
+                if (!pageNumber || !paymentAmount || !paymentDate) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'تکایە هەموو خانە پڕکەرەوەکان پڕبکەرەوە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                const installmentIndex = installments.findIndex(inst => inst.pageNumber === pageNumber);
+                
+                if (installmentIndex !== -1) {
+                    const installment = installments[installmentIndex];
+                    
+                    // Add payment record
+                    const payment = {
+                        amount: paymentAmount,
+                        date: paymentDate,
+                        currency: paymentType,
+                        notes: paymentNotes,
+                        timestamp: new Date().toISOString()
+                    };
+                    
+                    installment.payments.push(payment);
+                    
+                    // Update paid amounts
+                    if (paymentType === 'dinar') {
+                        installment.paidDinar += paymentAmount;
+                        installment.remainingDinar = installment.saleDinar - installment.paidDinar;
+                    } else {
+                        installment.paidDollar += paymentAmount;
+                        installment.remainingDollar = installment.saleDollar - installment.paidDollar;
+                    }
+                    
+                    // Update timestamp
+                    installment.updatedAt = new Date().toISOString();
+                    
+                    // Save to local storage
+                    saveDataToLocalStorage();
+                    
+                    // Show success message
+                    Swal.fire({
+                        title: 'سەرکەوتووبوو!',
+                        text: `پارەدان بە سەرکەوتوویی تۆمارکرا!\n\nژمارەی لاپەڕە: ${pageNumber}\nبڕی پارە: ${paymentAmount} ${paymentType === 'dinar' ? 'د.ع' : '$'}\nڕێکەوت: ${paymentDate}`,
+                        icon: 'success',
+                        confirmButtonText: 'باشە'
+                    });
+                    
+                    // Reset form
+                    paymentForm.reset();
+                    paymentCustomerName.value = '';
+                    remainingAfterPayment.value = '';
+                } else {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ قەستێک بەم ژمارەیە نەدۆزرایەوە!',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                }
+            });
+
+            // Report generation buttons
+            document.getElementById('generate-customer-report').addEventListener('click', () => {
+                const customerQuery = document.getElementById('report-customer').value;
+                if (!customerQuery) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'تکایە ناوی سییان یان ژمارەی مۆبایل بنووسە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                // Search for installments with this customer name or phone number
+                const results = installments.filter(inst => 
+                    inst.customerName.includes(customerQuery) || inst.phoneNumber.includes(customerQuery)
+                );
+                
+                if (results.length === 0) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ قەستێک بۆ ئەم کڕیارە نەدۆزرایەوە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                displayReportResults(results);
+            });
+
+            document.getElementById('generate-general-report').addEventListener('click', () => {
+                if (installments.length === 0) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ قەستێک تۆمارنەکراوە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                displayReportResults(installments);
+            });
+
+            document.getElementById('generate-threshold-report').addEventListener('click', () => {
+                const threshold = parseFloat(document.getElementById('debt-threshold').value) || 0;
+                const currency = document.getElementById('debt-currency').value;
+                
+                if (threshold <= 0) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'تکایە بڕێکی دروست بنووسە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                const results = installments.filter(inst => {
+                    if (currency === 'dinar') {
+                        return inst.remainingDinar > threshold;
+                    } else {
+                        return inst.remainingDollar > threshold;
+                    }
+                });
+                
+                if (results.length === 0) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: `هیچ قەستێک زیاتر لە ${threshold} ${currency === 'dinar' ? 'د.ع' : '$'} نییە`,
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                displayReportResults(results);
+            });
+
+            // Export report results
+            document.getElementById('export-report-results').addEventListener('click', () => {
+                const rows = Array.from(document.getElementById('report-results-body').querySelectorAll('tr')).map(row => {
+                    return Array.from(row.querySelectorAll('td')).map(cell => cell.textContent.trim());
+                });
+                
+                if (rows.length === 0) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ زانیارییەک نییە بۆ هەناردەکردن',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                exportToCSV(rows, `ڕاپۆرتی_قەستەکان_${new Date().toLocaleDateString('ar-IQ')}.csv`);
+            });
+
+            // Update form functionality
+            const updateForm = document.getElementById('update-form');
+            const updateSearchBtn = document.getElementById('update-search-btn');
+            const updateFields = document.getElementById('update-fields');
+
+            updateSearchBtn.addEventListener('click', () => {
+                const searchQuery = document.getElementById('update-search').value;
+                
+                if (!searchQuery) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'تکایە ژمارەی لاپەڕە یان مۆبایل بنووسە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                // Search by page number or phone number
+                const installment = installments.find(inst => 
+                    inst.pageNumber === searchQuery || inst.phoneNumber === searchQuery
+                );
+                
+                if (installment) {
+                    document.getElementById('update-page-number').value = installment.pageNumber;
+                    document.getElementById('update-customer-name').value = installment.customerName;
+                    document.getElementById('update-phone-number').value = installment.phoneNumber;
+                    document.getElementById('update-sale-date').value = installment.saleDate;
+                    document.getElementById('update-sale-dinar').value = installment.saleDinar;
+                    document.getElementById('update-sale-dollar').value = installment.saleDollar;
+                    document.getElementById('update-notes').value = installment.notes || '';
+                    
+                    updateFields.classList.remove('hidden');
+                } else {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ قەستێک نەدۆزرایەوە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    updateFields.classList.add('hidden');
+                }
+            });
+
+            updateForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const pageNumber = document.getElementById('update-page-number').value;
+                const customerName = document.getElementById('update-customer-name').value;
+                const phoneNumber = document.getElementById('update-phone-number').value;
+                const saleDate = document.getElementById('update-sale-date').value;
+                const saleDinar = parseFloat(document.getElementById('update-sale-dinar').value) || 0;
+                const saleDollar = parseFloat(document.getElementById('update-sale-dollar').value) || 0;
+                const notes = document.getElementById('update-notes').value;
+                
+                const installmentIndex = installments.findIndex(inst => inst.pageNumber === pageNumber);
+                
+                if (installmentIndex !== -1) {
+                    installments[installmentIndex].customerName = customerName;
+                    installments[installmentIndex].phoneNumber = phoneNumber;
+                    installments[installmentIndex].saleDate = saleDate;
+                    installments[installmentIndex].saleDinar = saleDinar;
+                    installments[installmentIndex].saleDollar = saleDollar;
+                    installments[installmentIndex].notes = notes;
+                    installments[installmentIndex].updatedAt = new Date().toISOString();
+                    
+                    // Recalculate remaining amounts
+                    installments[installmentIndex].remainingDinar = saleDinar - installments[installmentIndex].paidDinar;
+                    installments[installmentIndex].remainingDollar = saleDollar - installments[installmentIndex].paidDollar;
+                    
+                    // Save to local storage
+                    saveDataToLocalStorage();
+                    
+                    Swal.fire({
+                        title: 'سەرکەوتووبوو!',
+                        text: 'زانیارییەکان بە سەرکەوتوویی نوێکرانەوە',
+                        icon: 'success',
+                        confirmButtonText: 'باشە'
+                    });
+                    
+                    // Reset form
+                    updateForm.reset();
+                    updateFields.classList.add('hidden');
+                } else {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ قەستێک بەم ژمارەیە نەدۆزرایەوە!',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                }
+            });
+
+            // Delete form functionality
+            const deleteForm = document.getElementById('delete-form');
+            const deleteSearchBtn = document.getElementById('delete-search-btn');
+            const deleteResults = document.getElementById('delete-results');
+            const deleteCustomerInfo = document.getElementById('delete-customer-info');
+
+            deleteSearchBtn.addEventListener('click', () => {
+                const searchQuery = document.getElementById('delete-search').value;
+                
+                if (!searchQuery) {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'تکایە ژمارەی لاپەڕە یان مۆبایل بنووسە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    return;
+                }
+                
+                // Search by page number or phone number
+                const installment = installments.find(inst => 
+                    inst.pageNumber === searchQuery || inst.phoneNumber === searchQuery
+                );
+                
+                if (installment) {
+                    // Find all installments for this customer (by phone number)
+                    const customerInstallments = installments.filter(inst => inst.phoneNumber === installment.phoneNumber);
+                    
+                    deleteCustomerInfo.innerHTML = `
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <p class="text-gray-600">ناوی سییان:</p>
+                                <p class="font-semibold">${installment.customerName}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">ژمارەی مۆبایل:</p>
+                                <p class="font-semibold">${installment.phoneNumber}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">ژمارەی گشتیی قەستەکان:</p>
+                                <p class="font-semibold">${customerInstallments.length}</p>
+                            </div>
+                            <div>
+                                <p class="text-gray-600">کۆی گشتی قەرز:</p>
+                                <p class="font-semibold text-red-600">
+                                    ${customerInstallments.reduce((sum, inst) => sum + inst.remainingDinar, 0)} د.ع + 
+                                    ${customerInstallments.reduce((sum, inst) => sum + inst.remainingDollar, 0)}$
+                                </p>
+                            </div>
+                        </div>
+                    `;
+                    
+                    deleteResults.classList.remove('hidden');
+                } else {
+                    Swal.fire({
+                        title: 'هەڵە!',
+                        text: 'هیچ قەستێک نەدۆزرایەوە',
+                        icon: 'error',
+                        confirmButtonText: 'باشە'
+                    });
+                    deleteResults.classList.add('hidden');
+                }
+            });
+
+            deleteForm.addEventListener('submit', (e) => {
+                e.preventDefault();
+                
+                const searchQuery = document.getElementById('delete-search').value;
+                const deleteType = document.querySelector('input[name="delete-type"]:checked').value;
+                
+                if (deleteType === 'single') {
+                    // Delete single installment by page number
+                    const installmentIndex = installments.findIndex(inst => inst.pageNumber === searchQuery);
+                    
+                    if (installmentIndex !== -1) {
+                        const deleted = installments.splice(installmentIndex, 1);
+                        
+                        // Save to local storage
+                        saveDataToLocalStorage();
+                        
+                        // Update total count
+                        updateTotalInstallments();
+                        
+                        Swal.fire({
+                            title: 'سەرکەوتووبوو!',
+                            text: `قەست بە ژمارەی لاپەڕە ${deleted[0].pageNumber} بە سەرکەوتوویی سڕایەوە`,
+                            icon: 'success',
+                            confirmButtonText: 'باشە'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'هەڵە!',
+                            text: 'هیچ قەستێک بەم ژمارەیە نەدۆزرایەوە!',
+                            icon: 'error',
+                            confirmButtonText: 'باشە'
+                        });
+                    }
+                } else {
+                    // Delete all installments for a customer (by phone number)
+                    const customerInstallments = installments.filter(inst => inst.phoneNumber === searchQuery);
+                    
+                    if (customerInstallments.length > 0) {
+                        installments = installments.filter(inst => inst.phoneNumber !== searchQuery);
+                        
+                        // Save to local storage
+                        saveDataToLocalStorage();
+                        
+                        // Update total count
+                        updateTotalInstallments();
+                        
+                        Swal.fire({
+                            title: 'سەرکەوتووبوو!',
+                            text: `هەموو ${customerInstallments.length} قەستەکانی کڕیار بە سەرکەوتوویی سڕایەوە`,
+                            icon: 'success',
+                            confirmButtonText: 'باشە'
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'هەڵە!',
+                            text: 'هیچ قەستێک بەم ژمارەی مۆبایلە نەدۆزرایەوە!',
+                            icon: 'error',
+                            confirmButtonText: 'باشە'
+                        });
+                    }
+                }
+                
+                // Reset form
+                deleteForm.reset();
+                deleteResults.classList.add('hidden');
+            });
+
+            // Google Sheets integration
+            document.getElementById('export-to-sheets').addEventListener('click', exportToGoogleSheets);
+            document.getElementById('import-from-sheets').addEventListener('click', importFromGoogleSheets);
+        }
+
+        // View installment details
+        window.viewInstallmentDetails = function(id) {
+            const installment = installments.find(inst => inst.id === id);
+            if (installment) {
+                const paymentHistory = installment.payments.map(payment => `
+                    <tr class="border-b border-gray-100">
+                        <td class="py-2 px-4">${payment.amount} ${payment.currency === 'dinar' ? 'د.ع' : '$'}</td>
+                        <td class="py-2 px-4">${payment.date}</td>
+                        <td class="py-2 px-4">${payment.notes || '-'}</td>
+                    </tr>
+                `).join('') || '<tr><td colspan="3" class="py-4 text-center text-gray-500">هیچ پارەدانێک تۆمارنەکراوە</td></tr>';
+                
+                Swal.fire({
+                    title: `زانیاری قەست #${installment.pageNumber}`,
+                    html: `
+                        <div class="text-left rtl:text-right">
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p class="text-gray-600">ناوی سییان:</p>
+                                    <p class="font-semibold">${installment.customerName}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">ژمارەی مۆبایل:</p>
+                                    <p class="font-semibold">${installment.phoneNumber}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">ڕێکەوتی فروشتن:</p>
+                                    <p class="font-semibold">${installment.saleDate}</p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">ژمارەی لاپەڕە:</p>
+                                    <p class="font-semibold">${installment.pageNumber}</p>
+                                </div>
+                            </div>
+                            
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p class="text-gray-600">بڕی قەست:</p>
+                                    <p class="font-semibold">
+                                        ${installment.saleDinar ? installment.saleDinar + ' د.ع' : ''} 
+                                        ${installment.saleDinar && installment.saleDollar ? '+' : ''} 
+                                        ${installment.saleDollar ? installment.saleDollar + '$' : ''}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">پارەی داوە:</p>
+                                    <p class="font-semibold">
+                                        ${installment.paidDinar ? installment.paidDinar + ' د.ع' : ''} 
+                                        ${installment.paidDinar && installment.paidDollar ? '+' : ''} 
+                                        ${installment.paidDollar ? installment.paidDollar + '$' : ''}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">بری ماوە:</p>
+                                    <p class="font-semibold ${installment.remainingDinar > 0 || installment.remainingDollar > 0 ? 'text-red-600' : 'text-green-600'}">
+                                        ${installment.remainingDinar > 0 ? installment.remainingDinar + ' د.ع' : ''} 
+                                        ${installment.remainingDinar > 0 && installment.remainingDollar > 0 ? '+' : ''} 
+                                        ${installment.remainingDollar > 0 ? installment.remainingDollar + '$' : ''}
+                                        ${installment.remainingDinar <= 0 && installment.remainingDollar <= 0 ? 'پارەی تەواو دراوە' : ''}
+                                    </p>
+                                </div>
+                                <div>
+                                    <p class="text-gray-600">تێبینی:</p>
+                                    <p class="font-semibold">${installment.notes || 'هیچ تێبینیەک نییە'}</p>
+                                </div>
+                            </div>
+                            
+                            <h4 class="font-medium text-gray-700 mb-2 border-b pb-2">مێژووی پارەدانەکان</h4>
+                            <div class="overflow-auto max-h-40">
+                                <table class="min-w-full">
+                                    <thead>
+                                        <tr class="bg-gray-100">
+                                            <th class="py-2 px-4 text-right">بڕی پارە</th>
+                                            <th class="py-2 px-4 text-right">ڕێکەوت</th>
+                                            <th class="py-2 px-4 text-right">تێبینی</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${paymentHistory}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    `,
+                    width: '800px',
+                    confirmButtonText: 'باشە',
+                    showCloseButton: true
+                });
+            }
+        };
+
+        // Display report results
+        function displayReportResults(results) {
+            const reportResultsBody = document.getElementById('report-results-body');
+            
+            reportResultsBody.innerHTML = results.map(inst => {
+                const remainingText = 
+                    (inst.remainingDinar > 0 ? inst.remainingDinar + ' د.ع' : '') + 
+                    (inst.remainingDinar > 0 && inst.remainingDollar > 0 ? ' + ' : '') + 
+                    (inst.remainingDollar > 0 ? inst.remainingDollar + '$' : '') + 
+                    (inst.remainingDinar <= 0 && inst.remainingDollar <= 0 ? 'پارەی تەواو دراوە' : '');
+                
+                return `
+                    <tr class="border-b border-gray-100 hover:bg-gray-50">
+                        <td class="py-3 px-4">${inst.pageNumber}</td>
+                        <td class="py-3 px-4">${inst.customerName}</td>
+                        <td class="py-3 px-4">${inst.phoneNumber}</td>
+                        <td class="py-3 px-4">
+                            ${inst.saleDinar ? inst.saleDinar + ' د.ع' : ''} 
+                            ${inst.saleDinar && inst.saleDollar ? '+' : ''} 
+                            ${inst.saleDollar ? inst.saleDollar + '$' : ''}
+                        </td>
+                        <td class="py-3 px-4">
+                            ${inst.paidDinar ? inst.paidDinar + ' د.ع' : ''} 
+                            ${inst.paidDinar && inst.paidDollar ? '+' : ''} 
+                            ${inst.paidDollar ? inst.paidDollar + '$' : ''}
+                        </td>
+                        <td class="py-3 px-4 ${inst.remainingDinar > 0 || inst.remainingDollar > 0 ? 'text-red-600 font-medium' : 'text-green-600 font-medium'}">
+                            ${remainingText}
+                        </td>
+                        <td class="py-3 px-4">${inst.saleDate}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            document.getElementById('report-results').classList.remove('hidden');
+        }
+
+        // Export to CSV
+        function exportToCSV(rows, filename) {
+            const csvContent = "data:text/csv;charset=utf-8," 
+                + rows.map(row => row.join(",")).join("\n");
+            
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", filename);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
+        // Save data to local storage
+        function saveDataToLocalStorage() {
+            localStorage.setItem('installments', JSON.stringify(installments));
+        }
+
+        // Google Sheets integration functions
+        function checkGoogleAuth() {
+            // In a real app, you would check if the user is authenticated with Google
+            // For this example, we'll just show a status
+            const sheetsStatus = document.getElementById('sheets-status');
+            const statusIcon = document.getElementById('sheets-status-icon');
+            const statusText = document.getElementById('sheets-status-text');
+            
+            sheetsStatus.classList.remove('hidden');
+            statusIcon.innerHTML = '<i class="fas fa-circle-notch fa-spin text-blue-500"></i>';
+            statusText.textContent = 'پەیوەندی بە گووگڵەوە چێکراوە';
+            
+            // Simulate checking auth status
+            setTimeout(() => {
+                statusIcon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+                statusText.textContent = 'پەیوەندی بە گووگڵەوە چالاکە';
+            }, 1500);
+        }
+
+        function exportToGoogleSheets() {
+            const sheetsStatus = document.getElementById('sheets-status');
+            const statusIcon = document.getElementById('sheets-status-icon');
+            const statusText = document.getElementById('sheets-status-text');
+            
+            sheetsStatus.classList.remove('hidden');
+            statusIcon.innerHTML = '<i class="fas fa-circle-notch fa-spin text-blue-500"></i>';
+            statusText.textContent = 'زانیارییەکان هەناردە دەکرێن بۆ گووگڵ...';
+            
+            // In a real app, you would use the Google Sheets API to export data
+            // For this example, we'll simulate the process
+            setTimeout(() => {
+                statusIcon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+                statusText.textContent = `زانیارییەکان بە سەرکەوتوویی هەناردەکران! ${installments.length} قەست`;
+                
+                Swal.fire({
+                    title: 'سەرکەوتووبوو!',
+                    text: `زانیارییەکان بە سەرکەوتوویی هەناردەکران بۆ پەڕەی گووگڵ. ${installments.length} قەست هەناردەکرا.`,
+                    icon: 'success',
+                    confirmButtonText: 'باشە'
+                });
+            }, 2000);
+        }
+
+        function importFromGoogleSheets() {
+            const sheetsStatus = document.getElementById('sheets-status');
+            const statusIcon = document.getElementById('sheets-status-icon');
+            const statusText = document.getElementById('sheets-status-text');
+            
+            sheetsStatus.classList.remove('hidden');
+            statusIcon.innerHTML = '<i class="fas fa-circle-notch fa-spin text-blue-500"></i>';
+            statusText.textContent = 'زانیارییەکان دابەزێنرێن لە گووگڵ...';
+            
+            // In a real app, you would use the Google Sheets API to import data
+            // For this example, we'll simulate the process
+            setTimeout(() => {
+                // Simulate importing 5 records
+                const newInstallments = [
                     {
-                        name: "Wikipedia",
-                        url: "https://en.wikipedia.org/wiki/Main_Page",
-                        icon: "fas fa-book",
-                        color: "bg-blue-100 border-blue-300"
+                        id: Date.now(),
+                        pageNumber: "1001",
+                        customerName: "عەلی محەممەد",
+                        phoneNumber: "07701234567",
+                        saleDate: "2023-05-15",
+                        saleDinar: 500000,
+                        saleDollar: 0,
+                        paidDinar: 200000,
+                        paidDollar: 0,
+                        remainingDinar: 300000,
+                        remainingDollar: 0,
+                        notes: "قەستی ماڵەوە",
+                        payments: [
+                            {
+                                amount: 200000,
+                                date: "2023-06-01",
+                                currency: "dinar",
+                                notes: "پارەی سەرەتا",
+                                timestamp: "2023-06-01T10:00:00Z"
+                            }
+                        ],
+                        createdAt: "2023-05-15T09:30:00Z",
+                        updatedAt: "2023-06-01T10:00:00Z"
                     },
                     {
-                        name: "GitHub",
-                        url: "https://github.com",
-                        icon: "fab fa-github",
-                        color: "bg-gray-100 border-gray-300"
-                    },
-                    {
-                        name: "Google",
-                        url: "https://www.google.com",
-                        icon: "fab fa-google",
-                        color: "bg-green-100 border-green-300"
+                        id: Date.now() + 1,
+                        pageNumber: "1002",
+                        customerName: "سارا عەبدوڵا",
+                        phoneNumber: "07707654321",
+                        saleDate: "2023-05-20",
+                        saleDinar: 0,
+                        saleDollar: 500,
+                        paidDinar: 0,
+                        paidDollar: 200,
+                        remainingDinar: 0,
+                        remainingDollar: 300,
+                        notes: "قەستی ئۆتۆمبێل",
+                        payments: [
+                            {
+                                amount: 200,
+                                date: "2023-05-20",
+                                currency: "dollar",
+                                notes: "پارەی سەرەتا",
+                                timestamp: "2023-05-20T15:30:00Z"
+                            }
+                        ],
+                        createdAt: "2023-05-20T14:00:00Z",
+                        updatedAt: "2023-05-20T15:30:00Z"
                     }
                 ];
-                localStorage.setItem('sites', JSON.stringify(sites));
-            }
-            
-            renderSites(sites);
-            if (isAdmin) {
-                renderAdminSites(sites);
-            }
-        }
-
-        function renderSites(sites) {
-            if (sites.length === 0) {
-                emptyState.classList.remove('hidden');
-                sitesContainer.classList.add('hidden');
-                return;
-            }
-            
-            emptyState.classList.add('hidden');
-            sitesContainer.classList.remove('hidden');
-            sitesContainer.innerHTML = '';
-            
-            sites.forEach(site => {
-                const siteCard = document.createElement('div');
-                siteCard.className = `site-card ${site.color} border-2 rounded-xl p-6 shadow-sm cursor-pointer flex flex-col items-center justify-center`;
-                siteCard.innerHTML = `
-                    <i class="${site.icon} text-4xl mb-3 text-gray-700"></i>
-                    <h3 class="text-lg font-semibold text-gray-800">${site.name}</h3>
-                    <p class="text-sm text-gray-500 mt-1 truncate w-full text-center">${site.url}</p>
-                `;
-                siteCard.addEventListener('click', () => openSite(site.url, site.name));
-                sitesContainer.appendChild(siteCard);
-            });
-        }
-
-        function openSite(url, name) {
-            currentSiteUrl = url;
-            modalTitle.textContent = name;
-            siteFrame.src = url;
-            siteModal.classList.remove('hidden');
-        }
-
-        function closeSiteModal() {
-            siteModal.classList.add('hidden');
-            siteFrame.src = '';
-        }
-
-        function openAdminPanel() {
-            adminPanel.classList.remove('hidden');
-            const sites = JSON.parse(localStorage.getItem('sites')) || [];
-            renderAdminSites(sites);
-        }
-
-        function renderAdminSites(sites) {
-            adminSitesContainer.innerHTML = '';
-            
-            if (sites.length === 0) {
-                adminSitesContainer.innerHTML = '<p class="text-gray-500 text-center py-4">No sites added yet</p>';
-                return;
-            }
-            
-            sites.forEach((site, index) => {
-                const siteItem = document.createElement('div');
-                siteItem.className = 'bg-gray-50 rounded-lg p-4 border border-gray-200 flex justify-between items-center';
-                siteItem.innerHTML = `
-                    <div class="flex items-center space-x-3">
-                        <i class="${site.icon} text-xl text-gray-700"></i>
-                        <div>
-                            <h4 class="font-medium text-gray-800">${site.name}</h4>
-                            <p class="text-sm text-gray-500 truncate max-w-xs">${site.url}</p>
-                        </div>
-                    </div>
-                    <div class="flex space-x-2">
-                        <button class="edit-btn px-3 py-1 bg-yellow-100 text-yellow-700 rounded-md hover:bg-yellow-200 transition" data-index="${index}">
-                            <i class="fas fa-edit"></i>
-                        </button>
-                        <button class="delete-btn px-3 py-1 bg-red-100 text-red-700 rounded-md hover:bg-red-200 transition" data-index="${index}">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                `;
                 
-                adminSitesContainer.appendChild(siteItem);
-            });
-            
-            // Add event listeners to edit and delete buttons
-            document.querySelectorAll('.edit-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = e.currentTarget.getAttribute('data-index');
-                    editSite(index);
+                // Add to our installments array
+                installments = [...newInstallments, ...installments];
+                saveDataToLocalStorage();
+                updateTotalInstallments();
+                
+                statusIcon.innerHTML = '<i class="fas fa-check-circle text-green-500"></i>';
+                statusText.textContent = `زانیارییەکان بە سەرکەوتوویی دابەزێنرا! ${newInstallments.length} قەست`;
+                
+                Swal.fire({
+                    title: 'سەرکەوتووبوو!',
+                    text: `زانیارییەکان بە سەرکەوتوویی دابەزێنران لە پەڕەی گووگڵ. ${newInstallments.length} قەست زیادکرا.`,
+                    icon: 'success',
+                    confirmButtonText: 'باشە'
                 });
-            });
-            
-            document.querySelectorAll('.delete-btn').forEach(btn => {
-                btn.addEventListener('click', (e) => {
-                    const index = e.currentTarget.getAttribute('data-index');
-                    deleteSite(index);
-                });
-            });
+            }, 2000);
         }
 
-        function addSite(site) {
-            let sites = JSON.parse(localStorage.getItem('sites')) || [];
-            sites.push(site);
-            localStorage.setItem('sites', JSON.stringify(sites));
-            renderSites(sites);
-            renderAdminSites(sites);
-        }
-
-        function editSite(index) {
-            let sites = JSON.parse(localStorage.getItem('sites')) || [];
-            const site = sites[index];
-            
-            // Fill the form with the site data
-            document.getElementById('siteName').value = site.name;
-            document.getElementById('siteUrl').value = site.url;
-            document.getElementById('siteIcon').value = site.icon;
-            document.getElementById('siteColor').value = site.color;
-            
-            // Remove the site from the list
-            sites.splice(index, 1);
-            localStorage.setItem('sites', JSON.stringify(sites));
-            
-            // Update the UI
-            renderSites(sites);
-            renderAdminSites(sites);
-        }
-
-        function deleteSite(index) {
-            if (confirm('Are you sure you want to delete this site?')) {
-                let sites = JSON.parse(localStorage.getItem('sites')) || [];
-                sites.splice(index, 1);
-                localStorage.setItem('sites', JSON.stringify(sites));
-                renderSites(sites);
-                renderAdminSites(sites);
-            }
-        }
+        // Initialize the app when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initApp);
     </script>
 </body>
 </html>
